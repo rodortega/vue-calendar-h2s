@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { authAPI, type LoginCredentials, type LoginResponse } from '@/services/api'
+import { authAPI, type LoginCredentials, type LoginResponse, type BrokerInfo } from '@/services/api'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -8,6 +8,8 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref<string | null>(localStorage.getItem('refresh-token'))
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const brokerInfo = ref<BrokerInfo | null>(null)
+  const organizationId = ref<string | null>(localStorage.getItem('organization-id'))
 
   // Getters
   const isAuthenticated = computed(() => !!token.value)
@@ -28,6 +30,9 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('auth-token', data.token)
       localStorage.setItem('refresh-token', data.refreshToken)
       
+      // Fetch broker info to get organization ID
+      await fetchBrokerInfo()
+      
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Login failed'
       throw err
@@ -39,10 +44,13 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = (): void => {
     token.value = null
     refreshToken.value = null
+    brokerInfo.value = null
+    organizationId.value = null
     
     // Remove from localStorage
     localStorage.removeItem('auth-token')
     localStorage.removeItem('refresh-token')
+    localStorage.removeItem('organization-id')
     
     error.value = null
   }
@@ -69,6 +77,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const fetchBrokerInfo = async (): Promise<void> => {
+    try {
+      const response = await authAPI.getBrokerInfo()
+      brokerInfo.value = response.data
+      organizationId.value = response.data.organization.id
+      
+      // Store organization ID in localStorage
+      localStorage.setItem('organization-id', response.data.organization.id)
+      
+    } catch (err: any) {
+      console.error('Failed to fetch broker info:', err)
+      // Don't throw error as login was successful, just log the issue
+    }
+  }
+
   const clearError = (): void => {
     error.value = null
   }
@@ -78,10 +101,13 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken,
     isLoading,
     error,
+    brokerInfo,
+    organizationId,
     isAuthenticated,
     login,
     logout,
     refresh,
+    fetchBrokerInfo,
     clearError
   }
 })

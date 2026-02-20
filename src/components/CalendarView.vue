@@ -200,7 +200,7 @@ const calendarOptions = computed(() => ({
     right: 'dayGridMonth,timeGridWeek,timeGridDay'
   },
   events: events.value.map((event, index) => ({
-    id: `${event.id}-${index}`, // Make unique ID for each occurrence
+    id: `${event.id}-${index}`,
     title: event.title,
     start: event.startDate,
     end: event.endDate,
@@ -317,19 +317,13 @@ const handleEventResize = async (info: any): Promise<void> => {
 const handleEventSave = async (eventData: CreateEventData): Promise<void> => {
   try {
     if (selectedEvent.value) {
-      // Update existing event
-      const response = await calendarAPI.updateEvent(selectedEvent.value.id, eventData)
-      const eventIndex = events.value.findIndex(e => e.id === selectedEvent.value!.id)
-      if (eventIndex !== -1) {
-        events.value[eventIndex] = response.data
-      }
+      await calendarAPI.updateEvent(selectedEvent.value.id, eventData)
     } else {
-      // Create new event
-      const response = await calendarAPI.createEvent(eventData)
-      events.value.push(response.data)
+      await calendarAPI.createEvent(eventData)
     }
     
     closeModal()
+    refreshEvents()
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Failed to save event'
   }

@@ -46,7 +46,10 @@ export const authAPI = {
     apiClient.post('/login/brokers/email', credentials),
   
   refreshToken: (refreshToken: string): Promise<AxiosResponse<LoginResponse>> =>
-    apiClient.post('/auth/refresh', { refreshToken })
+    apiClient.post('/auth/refresh', { refreshToken }),
+
+  getBrokerInfo: (): Promise<AxiosResponse<BrokerInfo>> =>
+    apiClient.get('/brokers/me')
 }
 
 // Calendar API
@@ -73,7 +76,19 @@ export const calendarAPI = {
   
   // Get contacts for autocomplete
   getContacts: (query?: string): Promise<AxiosResponse<Contact[]>> =>
-    apiClient.get('/calendar/contacts/autocomplete', { params: { query } })
+    apiClient.get('/calendar/contacts/autocomplete', { params: { query } }),
+
+  // Search organization contacts for participants
+  searchContacts: (organizationId: string, keyword: string, offset: number = 0, limit: number = 10): Promise<AxiosResponse<ContactSearchResponse>> =>
+    apiClient.get(`/organizations/${organizationId}/contacts/search`, { 
+      params: { offset, limit, keyword }
+    }),
+
+  // Search organization estates
+  searchEstates: (organizationId: string, location: string, limit: number = 20): Promise<AxiosResponse<EstateSearchResponse>> =>
+    apiClient.get(`/organizations/${organizationId}/estates`, {
+      params: { limit, location }
+    })
 }
 
 // Types
@@ -85,6 +100,83 @@ export interface LoginCredentials {
 export interface LoginResponse {
   token: string
   refreshToken: string
+}
+
+export interface BrokerInfo {
+  id: string
+  editVersion: number
+  userType: string
+  profilePhoto: string
+  userIdentifier: string
+  userTypeIdentifier: string
+  firstName: string
+  lastName: string
+  email: string
+  emailConfirmed: boolean
+  timezone: string | null
+  deleted: boolean
+  linkedAccounts: any[]
+  organization: {
+    id: string
+    name: string
+    coordinates: {
+      lat: number
+      lon: number
+    }
+    bookedTools: {
+      emailMarketing: boolean
+      valuationTool: boolean
+      socialQ: boolean
+      marktMonitor: boolean
+      contactQ: boolean
+      objectQ: boolean
+    }
+    subscriptionPlan: any
+  }
+  isAdmin: boolean
+}
+
+export interface ContactSearchResult {
+  id: string
+  editVersion: number
+  isCompany: boolean
+  salutation: string | null
+  ownFullSalutation: string | null
+  academicTitle: string | null
+  firstName: string | null
+  lastName: string | null
+  full_name: string
+  email: string
+  [key: string]: any
+}
+
+export interface ContactSearchResponse {
+  results: ContactSearchResult[]
+  totalCount?: number
+}
+
+export interface EstateLocation {
+  country: string
+  city: string
+  street: string
+  houseNumber: string
+  postalCode: string
+  coordinate: {
+    longitude: number
+    latitude: number
+  }
+  district: string
+}
+
+export interface EstateSearchResult {
+  id: string
+  location: EstateLocation
+  [key: string]: any
+}
+
+export interface EstateSearchResponse {
+  results: EstateSearchResult[]
+  totalCount?: number
 }
 
 export interface GetEventsParams {
@@ -112,6 +204,14 @@ export interface LinkedContact {
 export interface LinkedEstate {
   id: string
   type: string
+  location: {
+    country: string
+    city: string
+    street: string
+    houseNumber: string
+    postalCode: string
+    district: string
+  }
 }
 
 export interface CalendarEvent {
@@ -133,6 +233,8 @@ export interface CalendarEvent {
   updatedAt: string
   isException: boolean
   exceptionType: string | null
+  category: string | null
+  color: string | null
 }
 
 export interface RecurrenceRule {
@@ -145,7 +247,8 @@ export interface RecurrenceRule {
 }
 
 export interface Participant {
-  id: string
+  id?: string
+  contactId?: string
   role: 'creator' | 'guest' | 'organizer'
   status: 'pending' | 'accepted' | 'declined'
   contact: Contact
@@ -180,10 +283,13 @@ export interface CreateEventData {
   recurrenceRule?: RecurrenceRule
   description?: string
   location?: string
+  participants?: Array<{contactId: string, role: 'creator' | 'organizer' | 'guest'}>
   participantIds?: string[]
   reminders?: Omit<Reminder, 'id'>[]
   contactIds?: string[]
   estateIds?: string[]
+  linkedContactIds?: string[]
+  linkedEstateIds?: string[]
 }
 
 export type UpdateEventData = Partial<CreateEventData>
