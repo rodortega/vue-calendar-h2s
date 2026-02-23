@@ -88,7 +88,38 @@ export const calendarAPI = {
   searchEstates: (organizationId: string, location: string, limit: number = 20): Promise<AxiosResponse<EstateSearchResponse>> =>
     apiClient.get(`/organizations/${organizationId}/estates`, {
       params: { limit, location }
+    }),
+
+  // Upload attachments to event
+  uploadAttachments: (eventId: string, files: File[]): Promise<AxiosResponse<AttachmentUploadResponse>> => {
+    const formData = new FormData()
+    files.forEach(file => {
+      formData.append('files[]', file)
     })
+    return apiClient.post(`/calendar/events/${eventId}/attachments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+
+  // Delete attachment from event
+  deleteAttachment: (eventId: string, attachmentId: string): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/calendar/events/${eventId}/attachments/${attachmentId}`)
+  ,
+
+  // Comments
+  listComments: (eventId: string): Promise<AxiosResponse<ListCommentsResponse>> =>
+    apiClient.get(`/calendar/events/${eventId}/comments`),
+
+  addComment: (eventId: string, payload: AddCommentDto): Promise<AxiosResponse<EventComment>> =>
+    apiClient.post(`/calendar/events/${eventId}/comments`, payload),
+
+  updateComment: (eventId: string, commentId: string, payload: UpdateCommentDto): Promise<AxiosResponse<EventComment>> =>
+    apiClient.put(`/calendar/events/${eventId}/comments/${commentId}`, payload),
+
+  deleteComment: (eventId: string, commentId: string): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/calendar/events/${eventId}/comments/${commentId}`)
 }
 
 // Types
@@ -229,6 +260,7 @@ export interface CalendarEvent {
   reminders: ApiReminder[]
   linkedContacts: LinkedContact[]
   linkedEstates: LinkedEstate[]
+  attachments: Attachment[]
   createdAt: string
   updatedAt: string
   isException: boolean
@@ -294,4 +326,85 @@ export interface CreateEventData {
 
 export type UpdateEventData = Partial<CreateEventData>
 
+export interface Attachment {
+  id: string
+  filename: string
+  size: number
+  mimeType?: string
+  url: string
+}
+
+export interface AttachmentUploadResponse {
+  attachments: Attachment[]
+}
+
+export const SUPPORTED_FILE_TYPES = {
+  images: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
+  documents: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'text/csv'
+  ],
+  videos: ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm']
+}
+
+export const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+
+export function getFileIcon(mimeType: string): string {
+  if (SUPPORTED_FILE_TYPES.images.includes(mimeType)) {
+    return 'pi pi-image'
+  }
+  if (mimeType === 'application/pdf') {
+    return 'pi pi-file-pdf'
+  }
+  if (SUPPORTED_FILE_TYPES.documents.includes(mimeType)) {
+    return 'pi pi-file'
+  }
+  if (SUPPORTED_FILE_TYPES.videos.includes(mimeType)) {
+    return 'pi pi-video'
+  }
+  return 'pi pi-file'
+}
+
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
 export default apiClient
+
+// Comment types
+export interface EventCommentUser {
+  id: string
+  name: string
+}
+
+export interface EventComment {
+  id: string
+  comment: string
+  createdAt: string
+  updatedAt: string
+  createdBy?: EventCommentUser | null
+  updatedBy?: EventCommentUser | null
+}
+
+export interface ListCommentsResponse {
+  comments: EventComment[]
+}
+
+export interface AddCommentDto {
+  comment: string
+}
+
+export interface UpdateCommentDto {
+  comment: string
+}

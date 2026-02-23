@@ -17,6 +17,12 @@ const handleLogout = (): void => {
   <div class="app">
     <LoginForm v-if="!isAuthenticated" />
     <CalendarView v-else @logout="handleLogout" />
+    
+    <!-- Global Toast component -->
+    <Toast />
+    
+    <!-- Global Confirm Dialog component -->
+    <ConfirmDialog />
   </div>
 </template>
 

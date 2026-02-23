@@ -6,10 +6,11 @@
     :closable="true"
     :draggable="false"
     class="event-modal"
-    style="width: 90%; max-width: 600px;"
+    :style="{ width: '95%', maxWidth: isEditing ? '1200px' : '600px' }"
     @hide="$emit('close')"
   >
-    <form @submit.prevent="handleSubmit" class="event-form p-4">
+    <div class="modal-container" :class="{ 'two-column': isEditing }">
+      <form @submit.prevent="handleSubmit" class="event-form" :class="{ 'form-column': isEditing }">
       <!-- Basic Info -->
       <div class="form-group">
         <FloatLabel>
@@ -256,9 +257,11 @@
                 @focus="showSearchResults = true"
                 class="w-full"
                 :disabled="!organizationId"
+                :placeholder="!organizationId ? 'Organization not loaded...' : ''"
               />
               <label for="participant-search">Search contacts to add as participants</label>
             </FloatLabel>
+            <small v-if="!organizationId" class="p-error">Please wait for organization data to load...</small>
           </div>
 
           <!-- Search results dropdown -->
@@ -322,9 +325,11 @@
                 @focus="showLinkedContactResults = true"
                 class="w-full"
                 :disabled="!organizationId"
+                :placeholder="!organizationId ? 'Organization not loaded...' : ''"
               />
               <label for="linked-contact-search">Search contacts to link</label>
             </FloatLabel>
+            <small v-if="!organizationId" class="p-error">Please wait for organization data to load...</small>
           </div>
 
           <!-- Search results dropdown -->
@@ -379,9 +384,11 @@
                 @focus="showEstateResults = true"
                 class="w-full"
                 :disabled="!organizationId"
+                :placeholder="!organizationId ? 'Organization not loaded...' : ''"
               />
               <label for="estate-search">Search estates to link</label>
             </FloatLabel>
+            <small v-if="!organizationId" class="p-error">Please wait for organization data to load...</small>
           </div>
 
           <!-- Search results dropdown -->
@@ -465,6 +472,15 @@
         </div>
       </Panel>
 
+      <!-- Attachments Section -->
+      <Panel v-if="isEditing" header="Attachments" class="attachment-panel">
+        <AttachmentManager
+          :eventId="props.event?.id"
+          :attachments="eventAttachments"
+          @attachmentsUpdated="handleAttachmentsUpdated"
+        />
+      </Panel>
+
       <!-- Form Actions -->
       <div class="form-actions mt-4">
         <Button
@@ -482,6 +498,15 @@
         />
       </div>
     </form>
+
+    <!-- Comments Section - Only show for existing events -->
+    <div v-if="isEditing" class="comments-column">
+      <CommentSection
+        :eventId="props.event?.id"
+        @commentsUpdated="handleCommentsUpdated"
+      />
+    </div>
+  </div>
   </Dialog>
 </template>
 
@@ -490,7 +515,9 @@ import { ref, computed, watch, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import { useAuthStore } from '@/stores/auth'
 import { calendarAPI } from '@/services/api'
-import type { CalendarEvent, CreateEventData, RecurrenceRule, Reminder, ContactSearchResult, EstateSearchResult } from '@/services/api'
+import AttachmentManager from './AttachmentManager.vue'
+import CommentSection from './CommentSection.vue'
+import type { CalendarEvent, CreateEventData, RecurrenceRule, Reminder, ContactSearchResult, EstateSearchResult, Attachment, EventComment } from '@/services/api'
 
 interface Props {
   event?: CalendarEvent
@@ -507,6 +534,11 @@ const emit = defineEmits<Emits>()
 
 const authStore = useAuthStore()
 const organizationId = computed(() => authStore.organizationId)
+
+// Debug organization ID availability
+watch(organizationId, (newValue) => {
+  console.log('Organization ID changed:', newValue)
+}, { immediate: true })
 
 const isEditing = computed(() => !!props.event)
 const isVisible = ref(true)
@@ -550,6 +582,19 @@ const eventData = ref<CreateEventData & { reminders: Reminder[]; category: strin
   linkedContactIds: [],
   linkedEstateIds: []
 })
+
+// Attachments management
+const eventAttachments = ref<Attachment[]>([])
+
+function handleAttachmentsUpdated(attachments: Attachment[]) {
+  eventAttachments.value = attachments
+}
+
+function handleCommentsUpdated(comments: EventComment[]) {
+  // Optional: You can store the comments in a ref if needed for other purposes
+  // eventComments.value = comments
+  console.log('Comments updated:', comments.length, 'comments')
+}
 
 const recurrence = ref<RecurrenceRule>({
   frequency: 'WEEKLY',
@@ -706,6 +751,9 @@ onMounted(() => {
       minutesBefore: apiReminder.minutesBefore,
       notificationType: apiReminder.type as 'email' | 'push' | 'both'
     })) || []
+    
+    // Initialize attachments
+    eventAttachments.value = props.event.attachments || []
 
     startDateCalendar.value = new Date(props.event.startDate)
     endDateCalendar.value = new Date(props.event.endDate)
@@ -1330,5 +1378,62 @@ const handleSubmit = (): void => {
 .linked-contacts-panel :deep(.p-panel-content),
 .linked-estates-panel :deep(.p-panel-content) {
   padding: 1.5rem;
+}
+
+/* Two Column Layout Styles */
+.modal-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+.modal-container.two-column {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
+  align-items: start;
+}
+
+.event-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+.form-column {
+  padding-right: 0;
+}
+
+.comments-column {
+  border-left: 1px solid var(--p-content-border-color);
+  padding-left: 2rem;
+  min-height: 400px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .modal-container.two-column {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .comments-column {
+    border-left: none;
+    border-top: 1px solid var(--p-content-border-color);
+    padding-left: 0;
+    padding-top: 1rem;
+  }
+}
+
+/* Adjust dialog content padding */
+:deep(.p-dialog-content) {
+  padding: 0;
+}
+
+/* Make sure form actions stay at bottom */
+.form-column .form-actions {
+  margin-top: auto;
+  padding-top: 1.5rem;
 }
 </style>

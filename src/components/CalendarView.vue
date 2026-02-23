@@ -65,9 +65,10 @@
       :modal="true"
       :closable="true"
       :draggable="false"
-      style="width: 90%; max-width: 500px;"
+      style="width: 95%; max-width: 1200px;"
     >
-      <div class="event-details-content">
+      <div class="event-details-modal-container">
+        <div class="event-details-content">
         <div v-if="selectedEvent?.description" class="detail-row">
           <label class="detail-label">Description:</label>
           <p class="detail-value">{{ selectedEvent.description }}</p>
@@ -106,9 +107,7 @@
             </li>
           </ul>
         </div>
-      </div>
-      
-      <template #footer>
+        
         <div class="detail-actions">
           <Button
             @click="editEvent"
@@ -123,7 +122,16 @@
             severity="danger"
           />
         </div>
-      </template>
+      </div>
+      
+      <!-- Comments Section for viewing events -->
+      <div v-if="selectedEvent?.id" class="event-details-comments">
+        <CommentSection
+          :eventId="selectedEvent.id"
+          @commentsUpdated="handleCommentsUpdated"
+        />
+      </div>
+    </div>
     </Dialog>
 
     <!-- Delete Confirmation -->
@@ -169,6 +177,7 @@ import dayjs from 'dayjs'
 import { useAuthStore } from '@/stores/auth'
 import { calendarAPI, type CalendarEvent, type CreateEventData, type RecurrenceRule, type ApiReminder } from '@/services/api'
 import EventModal from '@/components/EventModal.vue'
+import CommentSection from '@/components/CommentSection.vue'
 
 interface Emits {
   (e: 'logout'): void
@@ -360,7 +369,7 @@ const closeModal = (): void => {
 }
 
 watch(showEventDetails, (newValue) => {
-  if (!newValue && !showEditModal.value) {
+  if (!newValue && !showEditModal.value && !showDeleteConfirm.value) {
     selectedEvent.value = null
   }
 })
@@ -376,6 +385,11 @@ const refreshEvents = (): void => {
 const logout = (): void => {
   authStore.logout()
   emit('logout')
+}
+
+const handleCommentsUpdated = (comments: any[]) => {
+  // Optional: Handle comment updates if needed
+  console.log('Comments updated in event details:', comments.length, 'comments')
 }
 
 // Utility functions
@@ -599,5 +613,52 @@ onMounted(() => {
 :deep(.p-dialog-footer) {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--p-content-border-color);
+}
+
+/* Event Details Modal Styles */
+.event-details-modal-container {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
+  align-items: start;
+  padding: 1.5rem;
+  max-height: 70vh;
+}
+
+.event-details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  max-height: 40vh;
+}
+
+.event-details-comments {
+  border-left: 1px solid var(--p-content-border-color);
+  padding-left: 2rem;
+  height: 40vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Responsive adjustments for event details */
+@media (max-width: 1024px) {
+  .event-details-modal-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    max-height: 80vh;
+  }
+  
+  .event-details-content {
+    max-height: 40vh;
+  }
+  
+  .event-details-comments {
+    border-left: none;
+    border-top: 1px solid var(--p-content-border-color);
+    padding-left: 0;
+    padding-top: 1rem;
+    height: 35vh;
+  }
 }
 </style>

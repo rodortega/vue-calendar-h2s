@@ -8,6 +8,10 @@ import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'primeicons/primeicons.css'
 
+// PrimeVue services
+import ConfirmationService from 'primevue/confirmationservice'
+import ToastService from 'primevue/toastservice'
+
 // PrimeVue components  
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -24,6 +28,11 @@ import Divider from 'primevue/divider'
 import Panel from 'primevue/panel'
 import FloatLabel from 'primevue/floatlabel'
 import ColorPicker from 'primevue/colorpicker'
+import FileUpload from 'primevue/fileupload'
+import ProgressBar from 'primevue/progressbar'
+import ConfirmDialog from 'primevue/confirmdialog'
+import Toast from 'primevue/toast'
+import Tooltip from 'primevue/tooltip'
 
 const app = createApp(App)
 
@@ -38,6 +47,8 @@ app.use(PrimeVue, {
     }
   }
 })
+app.use(ConfirmationService)
+app.use(ToastService)
 
 // Register PrimeVue components globally
 app.component('Button', Button)
@@ -55,5 +66,12 @@ app.component('Divider', Divider)
 app.component('Panel', Panel)
 app.component('FloatLabel', FloatLabel)
 app.component('ColorPicker', ColorPicker)
+app.component('FileUpload', FileUpload)
+app.component('ProgressBar', ProgressBar)
+app.component('ConfirmDialog', ConfirmDialog)
+app.component('Toast', Toast)
+
+// Register directives
+app.directive('tooltip', Tooltip)
 
 app.mount('#app')
